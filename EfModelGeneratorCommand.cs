@@ -1,6 +1,6 @@
 ﻿//------------------------------------------------------------------------------
-// <copyright file="EfModelGeneratorCommand.cs" company="BOSCH">
-//     Copyright (c) BOSCH.  All rights reserved.
+// <copyright file="EfModelGeneratorCommand.cs" >
+//    
 // </copyright>
 //------------------------------------------------------------------------------
 
