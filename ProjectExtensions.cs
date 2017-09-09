@@ -3,6 +3,7 @@ using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Configuration;
 using System.IO;
 using System.Linq;
@@ -66,6 +67,59 @@ namespace EfModelGenerator
         public static bool EqualsIgnoreCase(this string s1, string s2)
         {
             return string.Equals(s1, s2, StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static CodeElement GetNameSpace(this ProjectItem projectItem)
+        {
+            var model = projectItem.FileCodeModel;
+            foreach (CodeElement element in model.CodeElements)
+            {
+                if (element.Kind == vsCMElement.vsCMElementNamespace)
+                {
+                    return element;
+                }
+            }
+            return null;
+        }
+
+        public static bool IsDerivedFromDbContext(this ProjectItem item)
+        {
+
+            var model = item.FileCodeModel;
+
+            if (model == null) return false;
+
+            var isDerivedFromDbContext = false;
+
+            foreach (CodeElement element in model.CodeElements)
+            {
+
+                if (element is EnvDTE.CodeNamespace)
+                {
+                    var namespaceElement = element as EnvDTE.CodeNamespace;
+
+                    foreach (var property in namespaceElement.Members)
+                    {
+                        var codeType = property as CodeType;
+                        if (codeType == null) continue;
+
+                        foreach (var member in codeType.Bases)
+                        {
+                            var codeClass = member as CodeClass;
+
+                            if (codeClass == null) continue;
+                            var name = codeClass.Name;
+
+                            if (!string.IsNullOrEmpty(name) && name.EqualsIgnoreCase("DbContext"))
+                            {
+                                isDerivedFromDbContext = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            return isDerivedFromDbContext;
         }
     }
 }

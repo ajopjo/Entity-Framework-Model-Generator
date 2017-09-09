@@ -137,7 +137,8 @@ namespace EfModelGenerator
             ITypeResolutionService resolutionService = typeService.GetTypeResolutionService(projectHierarchy);
             try
             {
-                var itemNamespace = GetTopLevelNamespace(this._dte2.SelectedItems.Item(1).ProjectItem);
+                var itemNamespace = this._dte2.SelectedItems.Item(1)?.ProjectItem?.GetNameSpace();
+
                 Type type = resolutionService.GetType($"{itemNamespace.FullName}.{_fileName}");
 
                 var dbContextInfo = new DbContextInfo(type, userConfig);
@@ -165,34 +166,33 @@ namespace EfModelGenerator
         {
 
             var menuCommand = sender as OleMenuCommand;
-            if (menuCommand != null)
+            if (menuCommand == null) return;
+
+
+            menuCommand.Visible = false;
+            menuCommand.Enabled = false;
+
+            IVsHierarchy hierarchy = null;
+            uint itemid = VSConstants.VSITEMID_NIL;
+
+            if (!IsSingleItemSelected(out hierarchy, out itemid)) return;
+
+            // Get the file path
+            var itemFullPath = string.Empty;
+            ((IVsProject)hierarchy).GetMkDocument(itemid, out itemFullPath);
+
+            //issue #1 fix get selected item
+            var fileInfo = new FileInfo(itemFullPath);
+            _fileName = fileInfo.Name.Replace(fileInfo.Extension, string.Empty);
+            _fileDirectory = fileInfo.Directory.FullName;
+
+            if ( this._dte2.SelectedItems.Item(1).ProjectItem.IsDerivedFromDbContext() ||
+                _fileName.EndsWith("DataContext", StringComparison.InvariantCultureIgnoreCase))
             {
-
-                menuCommand.Visible = false;
-                menuCommand.Enabled = false;
-
-                IVsHierarchy hierarchy = null;
-                uint itemid = VSConstants.VSITEMID_NIL;
-
-                if (!IsSingleItemSelected(out hierarchy, out itemid)) return;
-
-                // Get the file path
-                var itemFullPath = string.Empty;
-                ((IVsProject)hierarchy).GetMkDocument(itemid, out itemFullPath);
-
-
-                var fileInfo = new FileInfo(itemFullPath);
-
-                _fileName = fileInfo.Name.Replace(fileInfo.Extension, string.Empty);
-                _fileDirectory = fileInfo.Directory.FullName;
-
-                var fileEndsDataContext = _fileName.EndsWith("DataContext", StringComparison.InvariantCultureIgnoreCase);
-
-                if (!fileEndsDataContext) return;
-
                 menuCommand.Visible = true;
                 menuCommand.Enabled = true;
             }
+
         }
 
         private bool IsSingleItemSelected(out IVsHierarchy hierarchy, out uint itemid)
@@ -254,19 +254,6 @@ namespace EfModelGenerator
                     Marshal.Release(hierarchyPtr);
                 }
             }
-        }
-
-        private CodeElement GetTopLevelNamespace(ProjectItem item)
-        {
-            var model = item.FileCodeModel;
-            foreach (CodeElement element in model.CodeElements)
-            {
-                if (element.Kind == vsCMElement.vsCMElementNamespace)
-                {
-                    return element;
-                }
-            }
-            return null;
         }
 
     }
